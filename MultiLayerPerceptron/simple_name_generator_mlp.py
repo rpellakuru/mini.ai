@@ -6,14 +6,14 @@ import matplotlib.pyplot as plt
 
 class NameGenerator:
     BLOCK_SIZE = 3
-    EMBEDDING_DIMENSION = 10
     MINI_BATCH_SIZE = 32
     HIDDEN_LAYER_SIZE = 200
 
-    def __init__(self, words) -> None:
+    def __init__(self, words, embedding_size) -> None:
         self.g = torch.Generator().manual_seed(2147483647)
         random.seed(42)
         self.words = words
+        self.embedding_size = embedding_size
         self.initialize()
         
 
@@ -27,20 +27,20 @@ class NameGenerator:
         self.vocab_size = len(self.stoi)
 
     def get_training_dataset(self):
-        return self.build_dataset(self.words[: int(0.8 * len(words))])
+        return self.build_dataset(self.words[: int(0.8 * len(self.words))])
     
     def get_validation_dataset(self):
-        return self.build_dataset(self.words[int(0.8 * len(words)): int(0.9 * len(words))])
+        return self.build_dataset(self.words[int(0.8 * len(self.words)): int(0.9 * len(words))])
     
     def get_test_dataset(self):
-        return self.build_dataset(self.words[int(0.9 * len(words)):])
+        return self.build_dataset(self.words[int(0.9 * len(self.words)):])
 
 
     def mlp(self, X, Y):
         # Generate Embeddings for the input tokens. There are mathematical representation of a unit.
         # After training, the vectors will be adjusted in such a way that they make some sense
-        self.C  = torch.randn(self.vocab_size, self.EMBEDDING_DIMENSION, generator=self.g)
-        self.W1 = torch.randn(self.BLOCK_SIZE * self.EMBEDDING_DIMENSION, self.HIDDEN_LAYER_SIZE, generator=self.g)
+        self.C  = self.set_embeddings(self.vocab_size)
+        self.W1 = torch.randn(self.BLOCK_SIZE * self.embedding_size, self.HIDDEN_LAYER_SIZE, generator=self.g)
         self.b1 = torch.randn(self.HIDDEN_LAYER_SIZE, generator=self.g)
         self.W2 = torch.randn(self.HIDDEN_LAYER_SIZE, self.vocab_size, generator=self.g)
         self.b2 = torch.randn(self.vocab_size, generator=self.g)
@@ -77,6 +77,12 @@ class NameGenerator:
         # plt.plot(lossi)
         # plt.show()
 
+
+    def set_embeddings(self, vocab_size):
+         self.C  = torch.randn(vocab_size, self.embedding_size, generator=self.g)
+
+    def get_embeddings(self):
+        return self.C
 
     def build_dataset(self, words):
         X, Y = [], []
@@ -127,7 +133,7 @@ class NameGenerator:
 if __name__ == "__main__":
     # words = open('MultiLayerPerceptron/indian-names.txt', 'r').read().splitlines()
     words = open('MultiLayerPerceptron/names.txt', 'r').read().splitlines()
-    ng = NameGenerator(words)
+    ng = NameGenerator(words, 10)
     X, Y = ng.get_training_dataset()
     ng.mlp(X, Y)
 
