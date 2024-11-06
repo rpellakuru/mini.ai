@@ -1,12 +1,20 @@
 import torch
 from typing import Any
-from MultiLayerPerceptron.simple_name_generator_mlp import NameGenerator
+from simple_name_generator_mlp import NameGenerator
 import torch.nn.functional as F
 from matplotlib import pyplot as plt
 
 g = torch.Generator().manual_seed(2147483647)
+EMB_DIM = 10
+CONTEXT_BLOCK_SIZE = 3
+N_HIDDEN = 100
+VOCAB_SIZE = 87
+MAX_TRAINING_STEPS = 200_000
+TRAINING_BATCH_SIZE = 32
 
 '''
+    Pytorchify the code, so that, it alighns with torch.nn module
+    
     Neural Networks doesn't work magically. You will need to understand its internals to build an effective system.
 
     Undestanding different neural network layers with raw implementations rather than using the torch.nn modules directly
@@ -117,98 +125,93 @@ class Sequential:
     def parameters(self):
         return [p for layer in self.layers for p in layer.parameters()]
 
-def visualize_histogram():
-    plt.figure(figsize=(20, 4))
-    legends = []
-    for i, layer in enumerate(layers[:-1]):
-        if isinstance(layer, Tanh):
-            t = layer.out
-            print(f"layer {i:2d}  {layer.__class__.__name__:10s}mean {t.mean():+.2f},  std {t.std():.2f}, saturated: {(t.abs() > 0.97).float().mean() * 100:.2f}")
-            hy, hx = torch.histogram(t, density=True)
-            plt.plot(hx[:-1].detach(), hy.detach())
-            legends.append(f'layer {i} ({layer.__class__.__name__})')
-    plt.legend(legends)
-    plt.show()
 
 
+model = Sequential([
+    Embedding(VOCAB_SIZE, EMB_DIM),
+    Flatten(),
+    Linear(EMB_DIM * CONTEXT_BLOCK_SIZE, N_HIDDEN), BatchNorm1D(N_HIDDEN), Tanh(),
+    Linear(N_HIDDEN, VOCAB_SIZE)
+])
 
+parameters = model.parameters()
 
-
-n_embedding = 10
-block_size = 3
-n_hidden = 100
-vocab_size = 27
-
-layers = [
-            Linear(n_embedding * block_size, n_hidden), BatchNorm1D(n_hidden), Tanh(),
-            Linear(n_hidden, n_hidden), BatchNorm1D(n_hidden), Tanh(),
-            Linear(n_hidden, n_hidden), BatchNorm1D(n_hidden), Tanh(),
-            Linear(n_hidden, n_hidden), BatchNorm1D(n_hidden), Tanh(),
-            Linear(n_hidden, n_hidden), BatchNorm1D(n_hidden), Tanh(),
-            Linear(n_hidden, vocab_size)
-          ]
-
-
-
-with torch.no_grad():
-    layers[-1].weight *= 0.1
-    for layer in layers[:-1]:
-        if isinstance(layer, Linear):
-            layer.weight *= 5/3
-
-C = torch.randn((vocab_size, n_embedding), generator=g)
-parameters = [C] + [p for layer in layers for p in layer.parameters()]
-print("Total parameters being trained", sum( p.nelement() for p in parameters))
+print(sum(p.nelement() for p in parameters))
 
 for p in parameters:
     p.requires_grad = True
 
 
-
-
-words = open('MultiLayerPerceptron/resources/names.txt', 'r').read().splitlines()
-ng = NameGenerator(words, n_embedding)
+words = open('MultiLayerPerceptron/resources/indian-names.txt', 'r').read().splitlines()
+ng = NameGenerator(words, EMB_DIM)
 X, Y = ng.get_training_dataset()
 
-max_step = 200_000
-batch_size = 32
+
 lossi = []
 
 
-for i in range(max_step):
+for i in range(MAX_TRAINING_STEPS):
     # mini batch
-    ix = torch.randint(0, X.shape[0], (batch_size, ), generator=g)
-    emb = C[X[ix]]
-    x = emb.view(emb.shape[0], -1)
+    ix = torch.randint(0, X.shape[0], (TRAINING_BATCH_SIZE, ), generator=g)
 
-    for layer in layers:
-        x = layer(x)
-
-    loss = F.cross_entropy(x, Y[ix])
-        
-    for layer in layers:
-        layer.out.retain_grad()
-        
+    logits = model(X[ix])
+    loss = F.cross_entropy(logits, Y[ix])
+               
     for p in parameters:
         p.grad = None
     
     loss.backward()
-    lr = 0.1 if i < 100_000 else 0.01
+    lr = 0.1 if i < 150_000 else 0.01
 
     for p in parameters:
         p.data += -lr * p.grad
 
     if i % 10_000 == 0:
-        print(f"{i:7d}/ {max_step:7d}/ {loss.item():.4f}")
+        print(f"{i:7d}/ {MAX_TRAINING_STEPS:7d}/ {loss.item():.4f}")
     lossi.append(loss.log10().item())
-    visualize_histogram()
-    break
+    #visualize_histogram()
+    #break
    
     
+plt.plot(torch.tensor(lossi).view(-1, 1000).mean(1))
+plt.show()
 
 
-# Xv, Yv = ng.get_validation_dataset()
-# ng.loss(Xv, Yv)
+@torch.no_grad
+def loss(type, X, Y):
+    logits = model(X)
+    loss = F.cross_entropy(logits, Y)
+    print(type, loss.item())
+    return loss.item()
+
+
+
+
+Xv, Yv = ng.get_validation_dataset()
+loss("Validation", Xv, Yv)
+
+
+# Evaluate
+for layer in model.layers:
+    layer.training = False
+
+
+for _ in range(20):
+    out = []
+    context = [0] * CONTEXT_BLOCK_SIZE
+    while True:
+        logits = model(torch.tensor([context]))
+        probs = F.softmax(logits, dim=1)
+        ix = torch.multinomial(probs, num_samples=1).item()
+        context = context[1:] + [ix]
+        out.append(ix)
+        if ix == 0:
+            break
+    print(''.join(ng.itos[i] for i in out))
+
+
+
+
 
 # print("Generating names based on the model trained")
 # ng.generate_names(20)

@@ -30,7 +30,7 @@ class NameGenerator:
         return self.build_dataset(self.words[: int(0.8 * len(self.words))])
     
     def get_validation_dataset(self):
-        return self.build_dataset(self.words[int(0.8 * len(self.words)): int(0.9 * len(words))])
+        return self.build_dataset(self.words[int(0.8 * len(self.words)): int(0.9 * len(self.words))])
     
     def get_test_dataset(self):
         return self.build_dataset(self.words[int(0.9 * len(self.words)):])
@@ -132,7 +132,7 @@ class NameGenerator:
 
 if __name__ == "__main__":
     # words = open('MultiLayerPerceptron/indian-names.txt', 'r').read().splitlines()
-    words = open('MultiLayerPerceptron/names.txt', 'r').read().splitlines()
+    words = open('MultiLayerPerceptron/resources/names.txt', 'r').read().splitlines()
     ng = NameGenerator(words, 10)
     X, Y = ng.get_training_dataset()
     ng.mlp(X, Y)
