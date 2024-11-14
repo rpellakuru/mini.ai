@@ -4,7 +4,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 # Get the complete workds
-with open("microgpt/input.txt", 'r') as f:
+with open("microgpt/resources/input.txt", 'r') as f:
     content = f.read()
 
 # Prepare the tokens and mapping
