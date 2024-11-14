@@ -1,13 +1,13 @@
 import torch
 from typing import Any
-from MultiLayerPerceptron.simple_name_generator_mlp import NameGenerator
+from multilayerperceptron.simple_name_generator_mlp import NameGenerator
 import torch.nn.functional as F
 from matplotlib import pyplot as plt
 
 g = torch.Generator().manual_seed(2147483647)
 
 '''
-    Neural Networks doesn't work magically. You will need to understand its internals to build an effective system.
+    Neural Networks doesn't work automagically. You will need to understand its internals to build an effective system.
 
     Undestanding different neural network layers with raw implementations rather than using the torch.nn modules directly
     Goal: Get the intuition how things work behind the scene. 
@@ -166,7 +166,7 @@ for p in parameters:
 
 
 
-words = open('MultiLayerPerceptron/resources/names.txt', 'r').read().splitlines()
+words = open('multilayerperceptron/resources/names.txt', 'r').read().splitlines()
 ng = NameGenerator(words, n_embedding)
 X, Y = ng.get_training_dataset()
 

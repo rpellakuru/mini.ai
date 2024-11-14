@@ -13,6 +13,8 @@ MAX_TRAINING_STEPS = 200_000
 TRAINING_BATCH_SIZE = 32
 
 '''
+    Using ResNet approach to make a better performant NN -> https://arxiv.org/abs/1609.03499    
+
     Pytorchify the code, so that, it alighns with torch.nn module
 
     Neural Networks doesn't work magically. You will need to understand its internals to build an effective system.

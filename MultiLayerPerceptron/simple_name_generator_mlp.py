@@ -9,11 +9,12 @@ class NameGenerator:
     MINI_BATCH_SIZE = 32
     HIDDEN_LAYER_SIZE = 200
 
-    def __init__(self, words, embedding_size) -> None:
+    def __init__(self, words, embedding_size, block_size) -> None:
         self.g = torch.Generator().manual_seed(2147483647)
         random.seed(42)
         self.words = words
         self.embedding_size = embedding_size
+        self.BLOCK_SIZE = block_size
         self.initialize()
         
 
@@ -131,8 +132,8 @@ class NameGenerator:
 
 
 if __name__ == "__main__":
-    # words = open('MultiLayerPerceptron/indian-names.txt', 'r').read().splitlines()
-    words = open('MultiLayerPerceptron/resources/names.txt', 'r').read().splitlines()
+    # words = open('multilayerperceptron/indian-names.txt', 'r').read().splitlines()
+    words = open('multilayerperceptron/resources/names.txt', 'r').read().splitlines()
     ng = NameGenerator(words, 10)
     X, Y = ng.get_training_dataset()
     ng.mlp(X, Y)
@@ -234,7 +235,7 @@ if __name__ == "__main__":
 
 
 # if __name__ == "__main__":
-#     words = open('MultiLayerPerceptron/names.txt', 'r').read().splitlines()
+#     words = open('multilayerperceptron/names.txt', 'r').read().splitlines()
 #     ng = NameGenerator(words)
 #     X, Y = ng.get_training_dataset()
 #     ng.mlp(X, Y)
