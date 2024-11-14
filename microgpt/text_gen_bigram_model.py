@@ -3,6 +3,9 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+'''
+    A simple Bigram model which just looks at the prev character and then predicts the next token.
+'''
 # Get the complete workds
 with open("microgpt/resources/input.txt", 'r') as f:
     content = f.read()
