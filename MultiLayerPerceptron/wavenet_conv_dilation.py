@@ -144,7 +144,7 @@ for p in parameters:
     p.requires_grad = True
 
 
-words = open('MultiLayerPerceptron/resources/indian-names.txt', 'r').read().splitlines()
+words = open('multilayerperceptron/resources/indian-names.txt', 'r').read().splitlines()
 ng = NameGenerator(words, EMB_DIM, CONTEXT_BLOCK_SIZE)
 X, Y = ng.get_training_dataset()
 

@@ -14,12 +14,6 @@ TRAINING_BATCH_SIZE = 32
 
 '''
     Pytorchify the code, so that, it alighns with torch.nn module
-
-    Neural Networks doesn't work magically. You will need to understand its internals to build an effective system.
-
-    Undestanding different neural network layers with raw implementations rather than using the torch.nn modules directly
-    Goal: Get the intuition how things work behind the scene. 
-    Ex: how the parameters behave with different strategies, Kaimin initialization, batch initialization etc
 '''
 class Linear:
     def __init__(self, fan_in, fan_out, bias=True) -> None:
@@ -142,7 +136,7 @@ for p in parameters:
     p.requires_grad = True
 
 
-words = open('MultiLayerPerceptron/resources/indian-names.txt', 'r').read().splitlines()
+words = open('multilayerperceptron/resources/indian-names.txt', 'r').read().splitlines()
 ng = NameGenerator(words, EMB_DIM, CONTEXT_BLOCK_SIZE)
 X, Y = ng.get_training_dataset()
 
