@@ -35,8 +35,8 @@ data = torch.tensor(encode(content))
 training_data = data[:int(len(content)*0.9)]
 testing_data = data[int(len(content)*0.9):]
 
-x = training_data[:block_size]
-y = training_data[1:block_size + 1]
+# x = training_data[:block_size]
+# y = training_data[1:block_size + 1]
 
 # for i in range(block_size):
 #     print(f"{x[:i + 1]} predicts {y[i]}")
@@ -50,8 +50,10 @@ print(data)
 def get_batch(split):
     data = training_data if split == "train" else testing_data
     ix = torch.randint(len(data) - block_size, (batch_size,))
+    print("ix", ix)
     x = torch.stack([data[i: i + block_size] for i in ix])
     y = torch.stack([data[i + 1: i + block_size + 1] for i in ix])
+    print(f"x: {x}   y: {y}")
     return x,y
 
 xb, yb = get_batch("train")
@@ -106,6 +108,7 @@ m = BigramLanguageModel(vocab_size)
 logits, loss = m(xb, yb)
 
 print(f"Logits Shape: {logits.shape}, Loss: {loss}")
+print("token_embedding Before: ", m.tokens_embedding.weight)
 
 start_token = torch.zeros((1, 1), dtype=torch.long)
 generated_tokens = m.generate(start_token, 100)[0].tolist()
@@ -115,7 +118,7 @@ print(''.join(decode(generated_tokens)))
 
 optimizer = torch.optim.AdamW(m.parameters(), lr = 1e-3)
 
-for steps in range(100_000):
+for steps in range(1):
     xb, yb = get_batch('train')
     logits, loss = m(xb, yb)
     optimizer.zero_grad(set_to_none=True)
@@ -127,6 +130,7 @@ print("\nText After Training")
 
 generated_tokens = m.generate(start_token, 100)[0].tolist()
 print(''.join(decode(generated_tokens)))
+print("token_embedding After: ", m.tokens_embedding.weight)
 
 
 

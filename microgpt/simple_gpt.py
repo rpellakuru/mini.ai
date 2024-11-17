@@ -12,13 +12,17 @@ import torch.nn.functional as F
 
 batch_size = 32 # Number of samples/input sequences we process in parallel
 block_size = 8 # We can also call it as context size
-learning_rate = 1e-2
+learning_rate = 1e-3
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 loss_eval_iter = 200
 loss_eval_interval = 300
 torch.manual_seed(1337)
-max_iters=3000
+max_iters=5000
 embedding_dim = 32
+layers = 3
+num_heads = 4
+dropout = 0
+
 
 
 # Boilerplate code that we see in other files ------- START -----------
@@ -63,13 +67,6 @@ def get_batch(split):
     x, y = x.to(device), y.to(device)
     return x,y
 
-xb, yb = get_batch("train")
-print(f"Traning xb shape {xb.shape}")
-print(xb)
-
-print(f"Traning yb shape {yb.shape}")
-print(yb)
-
 
 # for b in range(batch_size):
 #     for t in range(block_size):
@@ -97,18 +94,97 @@ def estimate_loss():
 
 
 
+class MultiHeadAttention(nn.Module):
+    def __init__(self, num_heads, head_size):
+        super().__init__()
+        self.heads = nn.ModuleList([Head(head_size) for _ in range(num_heads)])
+        self.project_to_residual_path = nn.Linear(embedding_dim, embedding_dim)
+        self.dropout = nn.Dropout(dropout)
+
+    def forward(self, x):
+        out = torch.cat([h(x) for h in self.heads], dim=-1)
+        out = self.project_to_residual_path(out)
+        out = self.dropout(out)
+        return out
+
+
+class Head(nn.Module):
+    def __init__(self, head_size) -> None:
+        super().__init__()
+        self.query = nn.Linear(embedding_dim, head_size, bias=False)
+        self.key = nn.Linear(embedding_dim, head_size, bias=False)
+        self.value = nn.Linear(embedding_dim, head_size, bias=False)
+        self.register_buffer('tril', torch.tril(torch.ones(block_size, block_size)))
+        self.dropout = nn.Dropout(dropout)
+
+    def forward(self, x):       
+        B, T, C = x.shape
+        k = self.key(x)
+        q = self.query(x)
+        wei = q @ k.transpose(-2, -1) * C**-0.5
+        wei = wei.masked_fill(self.tril[:T, :T] == 0, float('-inf'))
+        wei = F.softmax(wei, dim=-1)
+        wei = self.dropout(wei)
+        v = self.value(x)
+        out = wei @ v
+        return out
+
+class FeedForward(nn.Module):
+    def __init__(self, embedding_dim) -> None:
+        super().__init__()
+        self.learn_after_attention = nn.Sequential(nn.Linear(embedding_dim, 4 * embedding_dim), 
+                                                   nn.ReLU(), nn.Linear(4 * embedding_dim, embedding_dim),
+                                                   nn.Dropout(dropout))
+
+    def forward(self, x):
+        return self.learn_after_attention(x)
+
+
+
+
+
+
+
+
+class Block(nn.Module):
+    def __init__(self, embedding_dim, num_heads) -> None:
+        super().__init__()
+        head_size = embedding_dim//num_heads
+        self.sa = MultiHeadAttention(num_heads, head_size)
+        self.ff = FeedForward(embedding_dim)
+        self.layer_norm_1 = nn.LayerNorm(embedding_dim)
+        self.layer_norm_2 = nn.LayerNorm(embedding_dim)
+    
+
+    def forward(self, x):
+        x = x + self.sa(self.layer_norm_1(x))
+        x = x + self.ff(self.layer_norm_2(x))
+        return x
+
+
 
 class GPT(nn.Module):
     def __init__(self):
         super().__init__()
         self.tokens_embedding_table = nn.Embedding(vocab_size, embedding_dim)
+        self.blocks = nn.Sequential(*[Block(embedding_dim, num_heads=4) for _ in range(layers)])
+        self.layer_norm = nn.LayerNorm(embedding_dim)
         self.lm_head = nn.Linear(embedding_dim, vocab_size)
 
+        # In Attention paper this is cosine and sine function, but, GPT is using as another learning parameter
+        self.position_embedding_table = nn.Embedding(block_size, embedding_dim) 
+
+
     def forward(self, idx, target=None):
-        token_embeddings = self.tokens_embedding_table(idx)
-        logits = self.lm_head(token_embeddings)
+        B, T = idx.shape
+        token_embeddings = self.tokens_embedding_table(idx) # -> B, T, embedding_dim
+        position_embeddings = self.position_embedding_table(torch.arange(T, device=device)) # -> T, embedding_dim
+        x = token_embeddings + position_embeddings
+        x = self.blocks(x) 
+        x = self.layer_norm(x)
+        logits = self.lm_head(x) # -> B, T, vocab_size
         # print(f"Initial logits shape: {logits.shape}")
-        if target is None:
+        if target is None:  
             loss = None
         else:
             B, T, C = logits.shape
@@ -118,10 +194,11 @@ class GPT(nn.Module):
             loss = F.cross_entropy(logits, target.view(B * T))
         return logits, loss
     
-    # Generate tokens using the simple bigram model.
+    # Generate tokens using the Multi Head Attention
     def generate(self, idx, max_tokens_to_generate):
         for _ in range(max_tokens_to_generate):
-            logits, loss = self(idx)
+            idx_context = idx[:,-block_size:]
+            logits, loss = self(idx_context)
             logits = logits[:, -1, :]
             probs = F.softmax(logits, dim=-1)
             idxn = torch.multinomial(probs, num_samples=1)
@@ -136,6 +213,12 @@ class GPT(nn.Module):
 
 m = GPT()
 m.to(device)
+xb, yb = get_batch("train")
+print(f"Traning xb shape {xb.shape}")
+print(xb)
+
+print(f"Traning yb shape {yb.shape}")
+print(yb)
 logits, loss = m(xb, yb)
 
 print(f"Logits Shape: {logits.shape}, Loss: {loss}")
@@ -146,7 +229,7 @@ print(''.join(decode(generated_tokens)))
 
 
 
-optimizer = torch.optim.AdamW(m.parameters(), lr = 1e-3)
+optimizer = torch.optim.AdamW(m.parameters(), lr = learning_rate)
 
 for step in range(max_iters):
     if step % loss_eval_interval == 0:

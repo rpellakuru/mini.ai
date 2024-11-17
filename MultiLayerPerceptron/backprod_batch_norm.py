@@ -1,9 +1,9 @@
 
-# from MultiLayerPerceptron.simple_name_generator_mlp import NameGenerator
+# from multilayerperceptron.simple_name_generator_mlp import NameGenerator
 
 # n_embedding = 10
 
-# words = open('MultiLayerPerceptron/resources/names.txt', 'r').read().splitlines()
+# words = open('multilayerperceptron/resources/names.txt', 'r').read().splitlines()
 # ng = NameGenerator(words, n_embedding)
 # X, Y = ng.get_training_dataset()
 
