@@ -5,10 +5,11 @@ import torch.nn.functional as F
 '''
     The Bigram model is doing what it is supposed to do, but, the tokens generated seems a bit random as
     the decoder is using only the prev char to predict the next. Now let's try to code gpt like text generation
-    using transformers architecture that is explained in the ***All you Need Attention*** paper. This may need GPU 
+    using transformers architecture that is explained in the ***Attention Is All You Need*** paper. This may need GPU 
     to train, but, will try to reduce the number of params, so that, it can run on a CPU (Fingers crossed)
-'''
 
+    https://arxiv.org/pdf/1706.03762
+'''
 
 batch_size = 32 # Number of samples/input sequences we process in parallel
 block_size = 32 # We can also call it as context size
@@ -17,13 +18,18 @@ device = 'cuda' if torch.cuda.is_available() else 'cpu'
 loss_eval_iter = 200
 loss_eval_interval = 300
 torch.manual_seed(1337)
-max_iters=5000
-embedding_dim = 100
-layers = 3
-num_heads = 4
-dropout = 0
+max_iters=5000 # Number of backpropogation steps 
+embedding_dim = 100 
+number_of_blocks = 3 # Number of blocks in the decoder Transformer architecuture. 
+num_heads = 4 # Number of heads in the multi-head attention module
+dropout = 0 # Number of nerons to dropout. This is used as a regularization technique. 
 vocab_size = 65
 
+
+# The following exercise involves implementing a Transformer architecture based on the “Attention Is All You Need” 
+# paper available at https://arxiv.org/pdf/1706.03762. Note that there are some deviations from the original design. 
+# For instance, in this exercise, the positional embeddings are modeled as learnable parameters within the network, 
+# whereas the original paper employs fixed sine and cosine functions to generate static positional encodings.
 
 class MultiHeadAttention(nn.Module):
     def __init__(self, num_heads, head_size):
@@ -63,6 +69,7 @@ class Head(nn.Module):
 class FeedForward(nn.Module):
     def __init__(self, embedding_dim) -> None:
         super().__init__()
+        # 4 * embedding_dim -> The internal dimensions are quadrupled to increase the size of the NN , so that, it can learn better
         self.learn_after_attention = nn.Sequential(nn.Linear(embedding_dim, 4 * embedding_dim), 
                                                    nn.ReLU(), nn.Linear(4 * embedding_dim, embedding_dim),
                                                    nn.Dropout(dropout))
@@ -78,11 +85,13 @@ class Block(nn.Module):
         head_size = embedding_dim//num_heads
         self.sa = MultiHeadAttention(num_heads, head_size)
         self.ff = FeedForward(embedding_dim)
+        # Layer Normalization normalizes the features in the batch
         self.layer_norm_1 = nn.LayerNorm(embedding_dim)
         self.layer_norm_2 = nn.LayerNorm(embedding_dim)
     
 
     def forward(self, x):
+        # Residual connections help propogate the information that could be lost if there is a vanishing gradient problem
         x = x + self.sa(self.layer_norm_1(x))
         x = x + self.ff(self.layer_norm_2(x))
         return x
@@ -93,7 +102,7 @@ class GPT(nn.Module):
     def __init__(self):
         super().__init__()
         self.tokens_embedding_table = nn.Embedding(vocab_size, embedding_dim)
-        self.blocks = nn.Sequential(*[Block(embedding_dim, num_heads=num_heads) for _ in range(layers)])
+        self.blocks = nn.Sequential(*[Block(embedding_dim, num_heads=num_heads) for _ in range(number_of_blocks)])
         self.layer_norm = nn.LayerNorm(embedding_dim)
         self.lm_head = nn.Linear(embedding_dim, vocab_size)
 
