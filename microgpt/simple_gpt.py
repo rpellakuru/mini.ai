@@ -1,18 +1,21 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+import time
 
 '''
-    The Bigram model is doing what it is supposed to do, but, the tokens generated seems a bit random as
-    the decoder is using only the prev char to predict the next. Now let's try to code gpt like text generation
-    using transformers architecture that is explained in the ***Attention Is All You Need*** paper. This may need GPU 
-    to train, but, will try to reduce the number of params, so that, it can run on a CPU (Fingers crossed)
+    The Bigram model is functioning as expected; however, the generated tokens appear somewhat random since the decoder 
+    relies solely on the previous character to predict the next one. Next, let's implement GPT-like text generation using 
+    the Transformer architecture described in the Attention Is All You Need paper. While training this model may require 
+    a GPU, we'll aim to minimize the number of parameters in hopes of making it feasible to run on a CPU
+
+    Current Implementation is trained with =~ 400K parameters
 
     https://arxiv.org/pdf/1706.03762
 '''
 
 batch_size = 32 # Number of samples/input sequences we process in parallel
-block_size = 32 # We can also call it as context size
+block_size = 64 # We can also call it as context size
 learning_rate = 1e-3
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 loss_eval_iter = 200
@@ -189,18 +192,22 @@ if __name__ == '__main__':
     training_data = data[:int(len(content)*0.9)]
     testing_data = data[int(len(content)*0.9):]
 
+    start_time = time.time()
+
 
     m = GPT()
     m.to(device)
     xb, yb = get_batch("train")
-    print(f"Traning xb shape {xb.shape}")
-    print(xb)
+    # print(f"Traning xb shape {xb.shape}")
+    # print(xb)
 
-    print(f"Traning yb shape {yb.shape}")
-    print(yb)
+    # print(f"Traning yb shape {yb.shape}")
+    # print(yb)
     logits, loss = m(xb, yb)
 
     print(f"Logits Shape: {logits.shape}, Loss: {loss}")
+
+    print(f"Number of parameters trained in this model {sum(p.numel() for p in m.parameters())/1e6} M")
 
     start_token = torch.zeros((1, 1), dtype=torch.long, device=device)
     generated_tokens = m.generate(start_token, 100)[0].tolist()
@@ -218,6 +225,8 @@ if __name__ == '__main__':
         optimizer.step()
 
 
+    end_time = time.time()
+    print(f"Training {xb.shape} took {end_time - start_time:.2f} seconds.")
     print("\nText After Training")
 
     generated_tokens = m.generate(start_token, 100)[0].tolist()
@@ -226,6 +235,7 @@ if __name__ == '__main__':
     print("Saving the Model paramters.")
     torch.save(m.state_dict(), 'microgpt/gpt-local-trained-model-params.pth')
 
+    
 
 
 
