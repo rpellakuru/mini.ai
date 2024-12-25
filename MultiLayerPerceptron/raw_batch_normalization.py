@@ -7,9 +7,9 @@ from matplotlib import pyplot as plt
 g = torch.Generator().manual_seed(2147483647)
 
 '''
-    Neural Networks doesn't work automagically. You will need to understand its internals to build an effective system.
+    Understanding the internals of how neural networks works helps build an effective system.
 
-    Undestanding different neural network layers with raw implementations rather than using the torch.nn modules directly
+    The excercise is to build the neural network layers with raw implementations rather than using the torch.nn modules
     Goal: Get the intuition how things work behind the scene. 
     Ex: how the parameters behave with different strategies, Kaimin initialization, batch initialization etc
 '''
