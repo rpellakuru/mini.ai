@@ -1,6 +1,6 @@
 import torch
 from typing import Any
-from multilayerperceptron.simple_name_generator_mlp import NameGenerator
+from multi_layer_perceptron.simple_name_generator_mlp import NameGenerator
 import torch.nn.functional as F
 from matplotlib import pyplot as plt
 
