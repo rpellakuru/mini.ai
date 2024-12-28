@@ -17,9 +17,9 @@ TRAINING_BATCH_SIZE = 32
 
     Pytorchify the code, so that, it alighns with torch.nn module
 
-    Neural Networks doesn't work magically. You will need to understand its internals to build an effective system.
+    Understanding the internals of how neural networks works helps build an effective system.
 
-    Undestanding different neural network layers with raw implementations rather than using the torch.nn modules directly
+    The excercise is to build the neural network layers with raw implementations rather than using the torch.nn modules
     Goal: Get the intuition how things work behind the scene. 
     Ex: how the parameters behave with different strategies, Kaimin initialization, batch initialization etc
 '''
